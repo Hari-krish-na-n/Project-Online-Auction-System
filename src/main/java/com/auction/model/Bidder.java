@@ -7,8 +7,9 @@ import java.util.Set;
  * Bidder extends User — INHERITANCE in action.
  *
  * Bidder places bids on auctions and maintains a personal watchlist.
+ * Bidder inherits BaseEntity identity and User account fields.
  *
- * POLYMORPHISM: displayRole() is OVERRIDDEN to print "Bidder".
+ * POLYMORPHISM: displayRole() and getRoleDescription() are OVERRIDDEN.
  *
  * COLLECTIONS — Set<Integer> watchlist:
  *   A HashSet is used because:
@@ -18,12 +19,6 @@ import java.util.Set;
  */
 public class Bidder extends User {
 
-    /**
-     * WHY Set<Integer>?
-     *   - Set does NOT allow duplicate entries.
-     *   - If a bidder adds the same auction ID twice, it is stored only once.
-     *   - HashSet is used for fast O(1) lookup.
-     */
     private Set<Integer> watchlist;
 
     public Bidder(int userId, String name, String email, String password) {
@@ -33,11 +28,18 @@ public class Bidder extends User {
 
     /**
      * OVERRIDES User.displayRole().
-     * Same method, different behaviour — that is POLYMORPHISM.
      */
     @Override
     public void displayRole() {
         System.out.println("Role: Bidder | Name: " + getName());
+    }
+
+    /**
+     * OVERRIDES User.getRoleDescription().
+     */
+    @Override
+    public String getRoleDescription() {
+        return "Bidder: Explores live auctions, monitors watchlists, and places manual or automated bids.";
     }
 
     /**

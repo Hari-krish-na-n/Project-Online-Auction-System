@@ -193,6 +193,10 @@ public class AuctionService implements BiddingService {
         return auctions.get(auctionId); // Map.get() — O(1) lookup
     }
 
+    public Auction findAuctionById(int auctionId) {
+        return findAuction(auctionId);
+    }
+
     // ── PLACE BID (BiddingService interface) ─────────────────────────────────
     /**
      * Places a bid on an auction.

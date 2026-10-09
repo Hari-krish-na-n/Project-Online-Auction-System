@@ -4,24 +4,31 @@ package com.auction.model;
  * Seller extends User — INHERITANCE in action.
  *
  * The Seller creates auctions and lists products.
- * Seller inherits userId, name, email, password from User.
+ * Seller inherits BaseEntity fields and User fields.
  *
- * POLYMORPHISM: displayRole() is OVERRIDDEN to print "Seller".
+ * POLYMORPHISM: displayRole() and getRoleDescription() are OVERRIDDEN.
  */
 public class Seller extends User {
 
     public Seller(int userId, String name, String email, String password) {
+        // super() chains to User and BaseEntity constructors
         super(userId, name, email, password);
     }
 
     /**
      * OVERRIDES User.displayRole().
-     * Same method name as Admin.displayRole() but different output.
-     * This is POLYMORPHISM — same method, different behaviour.
      */
     @Override
     public void displayRole() {
         System.out.println("Role: Seller | Name: " + getName());
+    }
+
+    /**
+     * OVERRIDES User.getRoleDescription().
+     */
+    @Override
+    public String getRoleDescription() {
+        return "Seller: Creates new auction listings, configures reserve prices and increments, and tracks item progress.";
     }
 
     /**
