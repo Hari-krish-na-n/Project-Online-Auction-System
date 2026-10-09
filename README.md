@@ -1,6 +1,6 @@
 # Online Auction System
 
-A robust, console-based core Java enterprise simulation for an **Online Auction System** built in plain Java 21 and Maven. Demonstrates enterprise-grade Object-Oriented Programming (OOP), layered architecture, custom exception management, and in-memory transactional consistency without external frameworks or databases.
+**Online Auction System** is a console-based core Java application that simulates a full-featured online marketplace where sellers list items, bidders compete in live auctions, and administrators manage approvals and closures. The project exists to demonstrate robust Object-Oriented Programming (OOP) design patterns, in-memory domain modeling, transactional bidding constraints, and professional Git workflows without external frameworks or database dependencies. It is designed for students, developers, and reviewers who want to learn and assess clean Java fundamentals, modular layered design, and practical software craftsmanship.
 
 ---
 
@@ -156,3 +156,11 @@ mvn compile exec:java -Dexec.mainClass="com.auction.Main"
 - [x] **Polymorphic Dispatch**: Role display and action methods overridden across subclasses.
 - [x] **Custom Exceptions**: `AuctionNotActiveException` (checked) and `InvalidBidException` (unchecked).
 - [x] **IDE Debugging**: Bid increment verification validated using breakpoints, conditional breakpoints, watch expressions, and call stacks.
+
+### Day 5: Inheritance, Polymorphism, Interfaces & Git Branching
+- [x] **BaseEntity**: Abstract base model encapsulating common `id` and `createdAt` audit fields with constructor chaining.
+- [x] **User Hierarchy**: Extended `User` with `Admin`, `Seller`, and `Bidder` implementing polymorphic role descriptions.
+- [x] **Strategy Pattern**: `BidStrategy` interface implemented by `ManualBidStrategy` and `AutoBidStrategy`, consumed polymorphically by `BidEngineService`.
+- [x] **Method Overloading**: Overloaded `pay()` methods in `PaymentService` handling default, mode-specific, and promotional payments.
+- [x] **Git Branching & Workflow**: Worked on `feature/day5-inheritance-polymorphism`, executed safe merge conflict generation and resolution, and performed a documentation rebase.
+- [x] **Verification & Documentation**: UML diagram (`docs/uml-day5.md`), OOP guide (`OOP_NOTES.md`), Git logs (`GIT_NOTES.md`), and comprehensive JUnit 5 test suite.
