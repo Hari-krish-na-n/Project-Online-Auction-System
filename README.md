@@ -164,3 +164,20 @@ mvn compile exec:java -Dexec.mainClass="com.auction.Main"
 - [x] **Method Overloading**: Overloaded `pay()` methods in `PaymentService` handling default, mode-specific, and promotional payments.
 - [x] **Git Branching & Workflow**: Worked on `feature/day5-inheritance-polymorphism`, executed safe merge conflict generation and resolution, and performed a documentation rebase.
 - [x] **Verification & Documentation**: UML diagram (`docs/uml-day5.md`), OOP guide (`OOP_NOTES.md`), Git logs (`GIT_NOTES.md`), and comprehensive JUnit 5 test suite.
+
+### Day 6: Exception Handling + AI-Assisted Debugging
+- [x] **Custom Checked Exception (`InsufficientStockException`)**: Enforces inventory limit business rules when requested order quantity exceeds available stock.
+- [x] **Custom Unchecked Exceptions (`InvalidQuantityException`, `InvalidBidException`)**: Rejects non-positive quantities and bids without corrupting item/order state.
+- [x] **Exception Chaining & Cause Preservation**: Wrapped low-level domain exceptions into `OrderProcessingException` while preserving original causes accessible via `getCause()`.
+- [x] **Multi-Catch & `finally` Auditing**: Built centralized `try-catch-finally` in `AuditService` and `OrderProcessor` ensuring audit trail execution regardless of success or failure.
+- [x] **AI-Assisted Debugging Notes**: Documented 2 real JVM stack traces with AI Copilot analysis, verification, root cause diagnosis, and fixes (`Day-06/day6-exception-handling/docs/AI_DEBUGGING_NOTES.md`).
+- [x] **Console Graceful Recovery**: Protected console menu loops against unexpected input crashes and exceptions.
+
+### Day 7: Collections Framework (Part 1) — Lists, Sets & Queues
+- [x] **FR1 (Authentication)**: `ArrayList<User>` master user catalog + `HashSet<String>` for instant $\mathcal{O}(1)$ username duplicate checks and case-insensitive uniqueness.
+- [x] **FR2 (Auction Listings)**: `ArrayList<Auction>` catalog storing validated seller listings in `PENDING` status.
+- [x] **FR3 (Admin Moderation Queue)**: `ArrayDeque<Auction>` FIFO moderation queue ensuring fairness and preventing repeated approvals.
+- [x] **Library Waitlist Simulation**: Standalone exercise demonstrating `ArrayList` catalogue, `LinkedHashSet` request deduplication, `ArrayDeque` FIFO queue, `PriorityQueue` faculty-first comparator ordering, and `Iterator.remove()` for overdue items.
+- [x] **Collections Showcase & Fail-Safe Patterns**: Detailed exploration of List/Set/Queue implementations, safe removal with `Iterator.remove()`, bi-directional traversal with `ListIterator`, and handling `ConcurrentModificationException`.
+- [x] **Benchmark Analysis**: Nanosecond timing benchmark measuring `ArrayList` vs `LinkedList` on head insertions and indexed lookups (`Day-07/day7-collections-framework/docs/COLLECTION_TIMING.md`).
+
