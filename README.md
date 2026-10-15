@@ -181,3 +181,44 @@ mvn compile exec:java -Dexec.mainClass="com.auction.Main"
 - [x] **Collections Showcase & Fail-Safe Patterns**: Detailed exploration of List/Set/Queue implementations, safe removal with `Iterator.remove()`, bi-directional traversal with `ListIterator`, and handling `ConcurrentModificationException`.
 - [x] **Benchmark Analysis**: Nanosecond timing benchmark measuring `ArrayList` vs `LinkedList` on head insertions and indexed lookups (`Day-07/day7-collections-framework/docs/COLLECTION_TIMING.md`).
 
+### Day 8: Collections Framework (Part 2) & FR4–FR6
+- [x] **Map Implementations**:
+  - `HashMap`: Fast $\mathcal{O}(1)$ lookup of auctions by `auctionId`, users by `userId`, and proxy bid allocations.
+  - `LinkedHashMap`: Preserves exact insertion order for in-memory chronological activity history (`activityLog`) and proxy registrations.
+  - `TreeMap`: Generates auction reports sorted naturally by keys (`auctionId` ascending).
+  - `Map.merge()`: Aggregates total bids per bidder (`map.merge(bidderName, 1, Integer::sum)`) and auctions per status.
+  - Map API demonstrations: `get()`, `put()`, `containsKey()`, `getOrDefault()`, `remove()`, and `merge()`.
+- [x] **Comparable & Comparator**:
+  - `Comparable`: Implemented natural ordering for `Auction` (by `auctionId` ascending) and `Bid` (by `bidId` ascending).
+  - `Comparator`: Implemented alternative ordering with `AuctionComparators.BID_AMOUNT_DESCENDING`.
+  - Chained Comparator: Built `AuctionComparators.HIGHEST_BID_DESCENDING_THEN_ID_ASCENDING` using `Comparator.comparing().reversed().thenComparing()`.
+- [x] **equals() and hashCode() Contract**:
+  - Implemented consistent, value-based `equals()` and `hashCode()` on `Auction`, `Bid`, and `User` using stable entity IDs.
+  - Added deterministic tests verifying contract rules, `HashSet`/`HashMap` bucket behavior, and the consequences of the missing-`hashCode` bug.
+- [x] **FR4 (Valid Bidding)**:
+  - Enforces `LIVE` status check (`AuctionNotActiveException`), non-seller bidder checks, positive amounts, and minimum increment calculations.
+  - Atomically updates highest bid upon valid placement and logs activity.
+- [x] **FR5 (Proxy / Automatic Bidding)**:
+  - Configures maximum proxy limits per bidder and auction.
+  - Increments lowest eligible bid step up to the bidder's ceiling.
+  - Manages competing proxy bidders with documented deterministic tie-breaking (earlier registration wins).
+- [x] **FR6 (Anti-Sniping)**:
+  - Detects valid bids submitted within the final 2 minutes of auction deadline.
+  - Automatically extends deadline by 5 minutes (`AuctionConstants.ANTI_SNIPE_EXTENSION_MINUTES`).
+  - Supports repeated late-bid extensions while ignoring rejected bids.
+
+### Day 9: Generics & Safe Resource Management
+- [x] **Generic Repository Abstraction**:
+  - Defined `CrudRepository<T, ID>` interface (`save`, `findById`, `findAll`, `deleteById`, `count`, `existsById`).
+  - Implemented `InMemoryRepository<T, ID>` with `Function<T, ID>` identifier extractor, concurrency support, and defensive copies.
+  - Reused generic repository for both `User` and `Auction` entities without raw types or unchecked casting.
+- [x] **Generic Utility Examples & PECS**:
+  - `Pair<K, V>`: Generic pair container holding two differently typed values.
+  - `Box<T extends Number>`: Upper bounded generic container accepting numeric types only.
+  - Generic `max()` method using `<T extends Comparable<T>>`.
+  - Producer Extends (`? extends Number`): Reading and summing numeric collections.
+  - Consumer Super (`? super Integer`): Populating integer consumers.
+  - Documentation of type erasure and compile-time type safety.
+- [x] **try-with-resources & AutoCloseable**:
+  - `AuctionCsvLoader`: Safe CSV reader utilizing try-with-resources with automatic stream closure and row validation reporting.
+  - `AuditSessionResource`: Demonstrates explicit `AutoCloseable` implementation and LIFO closing order verification.
