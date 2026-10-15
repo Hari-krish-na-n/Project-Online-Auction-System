@@ -14,7 +14,7 @@ import java.time.format.DateTimeFormatter;
  *
  * Bid objects are stored inside List<Bid> bidHistory inside the Auction class.
  */
-public class Bid {
+public class Bid implements Comparable<Bid> {
 
     // auto-increments across all Bid objects created
     private static int idCounter = 1;
@@ -34,6 +34,14 @@ public class Bid {
         this.timestamp = LocalDateTime.now();
     }
 
+    public Bid(int bidId, int auctionId, Bidder bidder, BigDecimal amount, LocalDateTime timestamp) {
+        this.bidId     = bidId;
+        this.auctionId = auctionId;
+        this.bidder    = bidder;
+        this.amount    = amount;
+        this.timestamp = timestamp != null ? timestamp : LocalDateTime.now();
+    }
+
     // ── Getters ──────────────────────────────────────────────────────────────
     public int           getBidId()     { return bidId;     }
     public int           getAuctionId() { return auctionId; }
@@ -41,11 +49,35 @@ public class Bid {
     public BigDecimal    getAmount()    { return amount;    }
     public LocalDateTime getTimestamp() { return timestamp; }
 
+    /**
+     * Natural ordering for Bid: by bidId ascending (chronological placement sequence).
+     */
+    @Override
+    public int compareTo(Bid other) {
+        if (other == null) {
+            return 1;
+        }
+        return Integer.compare(this.bidId, other.bidId);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Bid bid = (Bid) o;
+        return bidId == bid.bidId;
+    }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(bidId);
+    }
+
     // ── toString — used when printing bid history ─────────────────────────────
     @Override
     public String toString() {
         String time = timestamp.format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss"));
         return String.format("  Bid #%d | Bidder: %-15s | Amount: Rs.%-10s | Time: %s",
-                bidId, bidder.getName(), amount.toPlainString(), time);
+                bidId, bidder != null ? bidder.getName() : "Anonymous", amount.toPlainString(), time);
     }
 }

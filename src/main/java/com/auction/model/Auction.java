@@ -21,7 +21,7 @@ import java.util.List;
  * WHY BigDecimal for prices?
  *   All monetary fields use BigDecimal to avoid floating-point precision errors.
  */
-public class Auction {
+public class Auction implements Comparable<Auction> {
 
     // Auction IDs start at 100 and auto-increment
     private static int idCounter = 100;
@@ -49,7 +49,7 @@ public class Auction {
      */
     private List<Bid> bidHistory;
 
-    // ── Constructor ──────────────────────────────────────────────────────────
+    // ── Constructors ─────────────────────────────────────────────────────────
     public Auction(String productName,
                    String description,
                    Seller seller,
@@ -71,6 +71,30 @@ public class Auction {
         this.endTime          = endTime;
         this.status           = AuctionStatus.PENDING;  // always starts as PENDING
         this.bidHistory       = new ArrayList<>();       // empty — no bids placed yet
+    }
+
+    public Auction(int auctionId,
+                   String productName,
+                   String description,
+                   Seller seller,
+                   BigDecimal startingPrice,
+                   BigDecimal reservePrice,
+                   BigDecimal minimumIncrement,
+                   LocalDateTime startTime,
+                   LocalDateTime endTime) {
+
+        this.auctionId        = auctionId;
+        this.productName      = productName;
+        this.description      = description;
+        this.seller           = seller;
+        this.startingPrice    = startingPrice;
+        this.reservePrice     = reservePrice;
+        this.minimumIncrement = minimumIncrement;
+        this.currentBid       = startingPrice;
+        this.startTime        = startTime;
+        this.endTime          = endTime;
+        this.status           = AuctionStatus.PENDING;
+        this.bidHistory       = new ArrayList<>();
     }
 
     // ── Bid history operations ────────────────────────────────────────────────
@@ -104,8 +128,35 @@ public class Auction {
     public AuctionStatus  getStatus()           { return status;           }
 
     // ── Setters ──────────────────────────────────────────────────────────────
-    public void setStatus(AuctionStatus status)      { this.status     = status;     }
-    public void setCurrentBid(BigDecimal currentBid) { this.currentBid = currentBid; }
+    public void setStatus(AuctionStatus status)          { this.status     = status;     }
+    public void setCurrentBid(BigDecimal currentBid)     { this.currentBid = currentBid; }
+    public void setEndTime(LocalDateTime endTime)        { this.endTime    = endTime;    }
+    public void setDescription(String description)       { this.description = description; }
+    public void setProductName(String productName)       { this.productName = productName; }
+
+    /**
+     * Natural ordering for Auction: by auctionId ascending.
+     */
+    @Override
+    public int compareTo(Auction other) {
+        if (other == null) {
+            return 1;
+        }
+        return Integer.compare(this.auctionId, other.auctionId);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Auction auction = (Auction) o;
+        return auctionId == auction.auctionId;
+    }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(auctionId);
+    }
 
     // ── Display helper ────────────────────────────────────────────────────────
     /** Prints a formatted summary of this auction to the console. */
@@ -115,19 +166,19 @@ public class Auction {
         System.out.println("  Auction ID   : " + auctionId);
         System.out.println("  Product      : " + productName);
         System.out.println("  Description  : " + description);
-        System.out.println("  Seller       : " + seller.getName());
+        System.out.println("  Seller       : " + (seller != null ? seller.getName() : "Unknown"));
         System.out.println("  Starting Bid : Rs." + startingPrice.toPlainString());
         System.out.println("  Reserve Price: Rs." + reservePrice.toPlainString());
         System.out.println("  Min Increment: Rs." + minimumIncrement.toPlainString());
         System.out.println("  Current Bid  : Rs." + currentBid.toPlainString());
-        System.out.println("  Start Time   : " + startTime.format(fmt));
-        System.out.println("  End Time     : " + endTime.format(fmt));
+        System.out.println("  Start Time   : " + (startTime != null ? startTime.format(fmt) : "N/A"));
+        System.out.println("  End Time     : " + (endTime != null ? endTime.format(fmt) : "N/A"));
         System.out.println("  Status       : " + status);
         System.out.println("-------------------------------------------------");
     }
 
     @Override
     public String toString() {
-        return "Auction[id=" + auctionId + ", product=" + productName + ", status=" + status + "]";
+        return "Auction[id=" + auctionId + ", product=" + productName + ", currentBid=" + currentBid + ", status=" + status + "]";
     }
 }

@@ -33,20 +33,29 @@ import java.util.*;
 public class AuctionService implements BiddingService {
 
     /**
-     * WHY Map<Integer, Auction>?
-     *   - Key = auctionId, Value = Auction object.
-     *   - Fast O(1) retrieval by auction ID.
-     *   - HashMap is unordered, but we only need lookup by ID here.
+     * Map<Integer, Auction> auctions:
+     * - HashMap used for fast O(1) lookup of auctions by auctionId.
      */
-    private Map<Integer, Auction> auctions = new HashMap<>();
+    private final Map<Integer, Auction> auctions = new HashMap<>();
 
     /**
-     * WHY Queue<Auction>?
-     *   - Auctions pending admin approval are queued in FIFO order.
-     *   - The first seller to create an auction is reviewed first (fair).
-     *   - LinkedList implements Queue — supports add() at back, poll() from front.
+     * Queue<Auction> pendingQueue:
+     * - LinkedList implements Queue for FIFO moderation.
      */
-    private Queue<Auction> pendingQueue = new LinkedList<>();
+    private final Queue<Auction> pendingQueue = new LinkedList<>();
+
+    /**
+     * LinkedHashMap<Integer, Bid> activityLog:
+     * - LinkedHashMap preserves insertion order for chronological audit trail of all accepted bids.
+     */
+    private final Map<Integer, Bid> activityLog = new LinkedHashMap<>();
+
+    /**
+     * Map of Proxy Bids:
+     * - Key: auctionId, Value: LinkedHashMap mapping bidderId -> maximumProxyAmount
+     * - Preserves proxy registration order (earlier proxy wins on tie).
+     */
+    private final Map<Integer, Map<Integer, BigDecimal>> proxyBids = new HashMap<>();
 
     // ── CREATE AUCTION ────────────────────────────────────────────────────────
     /**
@@ -69,7 +78,7 @@ public class AuctionService implements BiddingService {
         // Place in the pending queue — Admin must approve it
         pendingQueue.add(auction);
 
-        // Also register in the map so it can be found by ID later
+        // Map put() operation: store auction by ID
         auctions.put(auction.getAuctionId(), auction);
 
         System.out.println("\n[SUCCESS] Auction created! ID: " + auction.getAuctionId()
@@ -217,12 +226,13 @@ public class AuctionService implements BiddingService {
     public void placeBid(int auctionId, Bidder bidder, BigDecimal amount)
             throws AuctionNotActiveException {
 
-        Auction auction = auctions.get(auctionId);
-
-        // ── Check 1: Does the auction exist? ─────────────────────────────────
-        if (auction == null) {
+        // Map containsKey check
+        if (!auctions.containsKey(auctionId)) {
             throw new AuctionNotActiveException("Auction ID " + auctionId + " does not exist.");
         }
+
+        // Map get() operation
+        Auction auction = auctions.get(auctionId);
 
         // ── Check 2: Is the auction LIVE? (CHECKED EXCEPTION) ────────────────
         if (auction.getStatus() != AuctionStatus.LIVE) {
@@ -238,7 +248,7 @@ public class AuctionService implements BiddingService {
         }
 
         // ── Check 4: Bid amount must be positive (UNCHECKED) ─────────────────
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidBidException("Bid amount must be greater than zero.");
         }
 
@@ -252,14 +262,50 @@ public class AuctionService implements BiddingService {
                     + " | You bid: Rs." + amount.toPlainString());
         }
 
-        // ── All checks passed — record the bid ───────────────────────────────
+        // ── All checks passed — record the bid atomically ────────────────────
         Bid bid = new Bid(auctionId, bidder, amount);
         auction.addBid(bid);  // adds to List<Bid> and updates currentBid
+
+        // LinkedHashMap insertion: preserves chronological activity history order
+        activityLog.put(bid.getBidId(), bid);
+
+        // FR6 — Anti-Sniping Rule:
+        // If a valid bid is placed within final 2 minutes of auction end, extend by 5 minutes
+        applyAntiSniping(auction, LocalDateTime.now());
 
         bidder.placeBidAction(auctionId); // polymorphic call on Bidder
         System.out.println("  [BID PLACED] Rs." + amount.toPlainString()
                 + " by " + bidder.getName()
                 + " on '" + auction.getProductName() + "'");
+    }
+
+    /**
+     * FR6: Anti-sniping calculation.
+     * If a bid occurs within ANTI_SNIPE_WINDOW_MINUTES before auction endTime,
+     * the deadline is extended by ANTI_SNIPE_EXTENSION_MINUTES.
+     *
+     * @param auction the auction to check and potentially extend
+     * @param bidTime the timestamp when the bid occurred
+     * @return true if the auction was extended, false otherwise
+     */
+    public boolean applyAntiSniping(Auction auction, LocalDateTime bidTime) {
+        if (auction == null || auction.getEndTime() == null || bidTime == null) {
+            return false;
+        }
+
+        LocalDateTime snipeThreshold = auction.getEndTime().minusMinutes(com.auction.AuctionConstants.ANTI_SNIPE_WINDOW_MINUTES);
+        // Condition: bidTime is on or after (endTime - 2 min) and before/at endTime
+        if (!bidTime.isBefore(snipeThreshold) && !bidTime.isAfter(auction.getEndTime())) {
+            LocalDateTime newEndTime = auction.getEndTime().plusMinutes(com.auction.AuctionConstants.ANTI_SNIPE_EXTENSION_MINUTES);
+            auction.setEndTime(newEndTime);
+            System.out.println("  [ANTI-SNIPING TRIGGERED] Bid arrived in final "
+                    + com.auction.AuctionConstants.ANTI_SNIPE_WINDOW_MINUTES
+                    + " minutes! Deadline extended by "
+                    + com.auction.AuctionConstants.ANTI_SNIPE_EXTENSION_MINUTES
+                    + " minutes to: " + newEndTime);
+            return true;
+        }
+        return false;
     }
 
     // ── GET BID HISTORY (BiddingService interface) ────────────────────────────
@@ -365,5 +411,162 @@ public class AuctionService implements BiddingService {
         if (!found) {
             System.out.println("  You have not placed any bids yet.");
         }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    //  FR5 — PROXY / AUTOMATIC BIDDING & MAP OPERATIONS
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /**
+     * FR5: Configure maximum proxy-bid amount for a bidder on a specific auction.
+     * Stored in Map<Integer, Map<Integer, BigDecimal>> proxyBids.
+     * Demonstrates put(), containsKey(), and getOrDefault().
+     */
+    public void configureProxyBid(int auctionId, Bidder bidder, BigDecimal maxLimit) {
+        if (!auctions.containsKey(auctionId)) {
+            throw new IllegalArgumentException("Auction ID " + auctionId + " not found.");
+        }
+        if (bidder == null) {
+            throw new IllegalArgumentException("Bidder cannot be null.");
+        }
+        if (maxLimit == null || maxLimit.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidBidException("Proxy bid limit must be greater than zero.");
+        }
+
+        Auction auction = auctions.get(auctionId);
+        if (auction.getSeller().getUserId() == bidder.getUserId()) {
+            throw new InvalidBidException("Seller cannot set proxy bid on own auction.");
+        }
+
+        BigDecimal minRequired = auction.getCurrentBid().add(auction.getMinimumIncrement());
+        if (maxLimit.compareTo(minRequired) < 0) {
+            throw new InvalidBidException("Proxy limit Rs." + maxLimit + " is below minimum required bid Rs." + minRequired);
+        }
+
+        // LinkedHashMap inside proxyBids preserves insertion order for tie-breaking
+        Map<Integer, BigDecimal> auctionProxies = proxyBids.computeIfAbsent(auctionId, k -> new LinkedHashMap<>());
+        auctionProxies.put(bidder.getUserId(), maxLimit);
+        System.out.println("  [PROXY CONFIGURED] Bidder '" + bidder.getName() + "' proxy limit set to Rs." + maxLimit + " for Auction #" + auctionId);
+    }
+
+    /**
+     * Retrieves the proxy-bid limit for a bidder on an auction.
+     * Demonstrates getOrDefault().
+     */
+    public BigDecimal getProxyBidLimit(int auctionId, int bidderId) {
+        Map<Integer, BigDecimal> auctionProxies = proxyBids.get(auctionId);
+        if (auctionProxies == null) {
+            return BigDecimal.ZERO;
+        }
+        return auctionProxies.getOrDefault(bidderId, BigDecimal.ZERO);
+    }
+
+    /**
+     * Removes a proxy bid limit if the bidder cancels.
+     * Demonstrates remove().
+     */
+    public boolean removeProxyBid(int auctionId, int bidderId) {
+        Map<Integer, BigDecimal> auctionProxies = proxyBids.get(auctionId);
+        if (auctionProxies != null && auctionProxies.containsKey(bidderId)) {
+            auctionProxies.remove(bidderId);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Executes automatic proxy bidding between configured proxy bidders on an auction.
+     * Tie-breaking rule: The bidder who configured their proxy limit earlier wins ties.
+     */
+    public void executeProxyBids(int auctionId, List<Bidder> knownBidders) throws AuctionNotActiveException {
+        Auction auction = auctions.get(auctionId);
+        if (auction == null || auction.getStatus() != AuctionStatus.LIVE) {
+            return;
+        }
+
+        Map<Integer, BigDecimal> limits = proxyBids.get(auctionId);
+        if (limits == null || limits.isEmpty()) {
+            return;
+        }
+
+        // Bidder lookup map: HashMap O(1)
+        Map<Integer, Bidder> bidderMap = new HashMap<>();
+        for (Bidder b : knownBidders) {
+            bidderMap.put(b.getUserId(), b);
+        }
+
+        boolean bidPlacedInRound;
+        do {
+            bidPlacedInRound = false;
+            BigDecimal minRequired = auction.getCurrentBid().add(auction.getMinimumIncrement());
+
+            for (Map.Entry<Integer, BigDecimal> entry : limits.entrySet()) {
+                int bidderId = entry.getKey();
+                BigDecimal maxLimit = entry.getValue();
+                Bidder bidder = bidderMap.get(bidderId);
+
+                if (bidder == null) continue;
+
+                // Check if bidder is already the current highest bidder
+                List<Bid> history = auction.getBidHistory();
+                if (!history.isEmpty() && history.get(history.size() - 1).getBidder().getUserId() == bidderId) {
+                    continue; // Already winning
+                }
+
+                if (maxLimit.compareTo(minRequired) >= 0) {
+                    placeBid(auctionId, bidder, minRequired);
+                    bidPlacedInRound = true;
+                    break; // Re-evaluate competing bids at next price increment
+                }
+            }
+        } while (bidPlacedInRound);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    //  AGGREGATION WITH merge() & ORDERED MAPS
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Counts the total number of bids placed by each bidder across all auctions.
+     * Demonstrates Map.merge() for frequency aggregation:
+     *   map.merge(key, 1, Integer::sum);
+     */
+    public Map<String, Integer> countBidsPerBidder() {
+        Map<String, Integer> bidCounts = new HashMap<>();
+        for (Auction auction : auctions.values()) {
+            for (Bid bid : auction.getBidHistory()) {
+                String bidderName = bid.getBidder() != null ? bid.getBidder().getName() : "Unknown";
+                bidCounts.merge(bidderName, 1, Integer::sum);
+            }
+        }
+        return bidCounts;
+    }
+
+    /**
+     * Counts total auctions per status.
+     * Demonstrates Map.merge() aggregation.
+     */
+    public Map<AuctionStatus, Integer> countAuctionsByStatus() {
+        Map<AuctionStatus, Integer> counts = new HashMap<>();
+        for (Auction auction : auctions.values()) {
+            counts.merge(auction.getStatus(), 1, Integer::sum);
+        }
+        return counts;
+    }
+
+    /**
+     * Returns a report of auctions sorted by auctionId using TreeMap (natural ordering).
+     * Demonstrates TreeMap for key-sorted reports.
+     */
+    public SortedMap<Integer, Auction> getAuctionsSortedById() {
+        return new TreeMap<>(auctions);
+    }
+
+    /**
+     * Returns an ordered in-memory activity log of all accepted bids.
+     * LinkedHashMap preserves insertion order.
+     */
+    public Map<Integer, Bid> getActivityLog() {
+        return Collections.unmodifiableMap(activityLog);
     }
 }

@@ -53,6 +53,19 @@ public abstract class User extends BaseEntity {
     public void setPassword(String password) { this.password = password; }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        User user = (User) o;
+        return getId() == user.getId();
+    }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(getId());
+    }
+
+    @Override
     public String toString() {
         return "User[id=" + getId() + ", name=" + name + ", email=" + email + ", createdAt=" + getCreatedAt() + "]";
     }
